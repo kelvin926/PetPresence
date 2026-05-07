@@ -1,0 +1,18 @@
+# Runtime / orchestration
+.omx/
+.agents/
+.codex/
+.git/
+
+# Build output
+bin/
+obj/
+TestResults/
+artifacts/
+.vs/
+
+# OS/editor
+.DS_Store
+Thumbs.db
+*.user
+*.suo
