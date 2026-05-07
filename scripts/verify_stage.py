@@ -23,6 +23,16 @@ def require_file(path: str) -> str:
     return p.read_text(encoding="utf-8")
 
 
+def read_tests_source() -> str:
+    test_dir = ROOT / "tests" / "PetPresence.Tests"
+    require(test_dir.exists(), "missing test project directory")
+    sources = []
+    for path in sorted(test_dir.rglob("*.cs")):
+        sources.append(path.read_text(encoding="utf-8"))
+    require(sources, "test project contains no C# source files")
+    return "\n".join(sources)
+
+
 def scan_source_for_banned_apis() -> None:
     banned = [
         "SetWindowsHookEx",
@@ -82,7 +92,7 @@ def verify_v0() -> None:
     for token in ["PeriodicTimer", "ActivityStabilizer", "StatusText", "AnimationKey", "_heartbeatInterval", "_minimumBubbleDisplay"]:
         require(token in local_controller, f"v0 local presence controller missing {token}")
 
-    tests = require_file("tests/PetPresence.Tests/Program.cs")
+    tests = read_tests_source()
     for token in ["ClassifiesWordAsWriting", "ClassifiesYouTubeAsWatching", "NormalModeIsClickThrough", "PresenceDtoDoesNotExposeRawMetadata"]:
         require(token in tests, f"v0 test missing {token}")
 
@@ -104,7 +114,7 @@ def verify_v1() -> None:
     require("HubConnectionBuilder" in client and "UpdatePresence" in client, "v1 desktop SignalR client missing")
     overlay_controller = require_file("src/PetPresence.Desktop/Presence/PresenceOverlayController.cs")
     require("FriendPresenceChanged" in overlay_controller and "GetOrAddFriend" in overlay_controller, "v1 friend presence overlay wiring missing")
-    tests = require_file("tests/PetPresence.Tests/Program.cs")
+    tests = read_tests_source()
     for token in ["PresenceDtoRejectsSenderMismatch", "PresenceTtlExpiresSnapshot", "LocalPresenceLoopUpdatesOwnPet", "FriendPresenceAddsPet", "PresenceValidatorCanonicalizesStatusText", "AppConfiguresPresenceClientFromEnvironment"]:
         require(token in tests, f"v1 test missing {token}")
     validator = require_file("src/PetPresence.Server/Presence/PresenceUpdateValidator.cs")
@@ -127,7 +137,7 @@ def verify_v2() -> None:
         require(route in program, f"v2 endpoint missing {route}")
     layout = require_file("src/PetPresence.Desktop/Overlay/FriendPetLayoutStore.cs")
     require("SaveAsync" in layout and "LoadAsync" in layout, "v2 pet position persistence missing")
-    tests = require_file("tests/PetPresence.Tests/Program.cs")
+    tests = read_tests_source()
     for token in ["OnlyAcceptedFriendsReceivePresence", "FriendLayoutRoundTrips"]:
         require(token in tests, f"v2 test missing {token}")
     verify_privacy_contracts()
@@ -147,7 +157,7 @@ def verify_v3() -> None:
     audio = require_file("src/PetPresence.Desktop/Activity/WindowsAudioSessionReader.cs")
     for token in ["IAudioSessionManager2", "IAudioSessionEnumerator", "IAudioMeterInformation", "GetProcessId"]:
         require(token in audio, f"v3 audio session reader missing {token}")
-    tests = require_file("tests/PetPresence.Tests/Program.cs")
+    tests = read_tests_source()
     for token in ["PrivacyPauseSuppressesSharing", "ExcludedAppSuppressesSharing", "ApproximateModeCoarsensStatus", "IdleReaderContract"]:
         require(token in tests, f"v3 test missing {token}")
     verify_privacy_contracts()
@@ -172,7 +182,12 @@ def verify_v4() -> None:
     require("Sanitize" in crash and "window title" in crash.lower(), "v4 crash log sanitizer missing")
     settings = read("src/PetPresence.Desktop/Settings/SettingsImportExportService.cs")
     require("ExportAsync" in settings and "ImportAsync" in settings, "v4 settings import/export missing")
-    tests = require_file("tests/PetPresence.Tests/Program.cs")
+    test_project = require_file("tests/PetPresence.Tests/PetPresence.Tests.csproj")
+    for token in ["Microsoft.NET.Test.Sdk", "xunit", "xunit.runner.visualstudio", "IsTestProject"]:
+        require(token in test_project, f"test project missing xUnit/dotnet test configuration {token}")
+    require("<OutputType>Exe</OutputType>" not in test_project, "test project must not be console-only after xUnit conversion")
+    tests = read_tests_source()
+    require("[Fact]" in tests, "xUnit tests must use [Fact]")
     for token in ["CrashLogsAreSanitized", "SettingsExportImportRoundTrips", "UpdateManifestRejectsDowngrade"]:
         require(token in tests, f"v4 test missing {token}")
     verify_privacy_contracts()
