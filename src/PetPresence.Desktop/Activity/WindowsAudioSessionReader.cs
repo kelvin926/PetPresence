@@ -17,7 +17,7 @@ public sealed class WindowsAudioSessionReader : IAudioSessionReader
         var snapshots = new List<AudioActivitySnapshot>();
         try
         {
-            var enumerator = (IMMDeviceEnumerator)new MMDeviceEnumerator();
+            var enumerator = (IMMDeviceEnumerator)(object)new MMDeviceEnumerator();
             enumerator.GetDefaultAudioEndpoint(EDataFlow.eRender, ERole.eMultimedia, out var device);
             var iid = typeof(IAudioSessionManager2).GUID;
             device.Activate(ref iid, CLSCTX.CLSCTX_ALL, IntPtr.Zero, out var managerObject);
