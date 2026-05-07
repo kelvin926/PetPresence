@@ -1,5 +1,6 @@
 using PetPresence.Contracts;
 using PetPresence.Desktop.Activity;
+using PetPresence.Server.Presence;
 
 var tests = new (string Name, Action Test)[]
 {
@@ -9,6 +10,8 @@ var tests = new (string Name, Action Test)[]
     ("ClassifiesIdleAsAway", ClassifiesIdleAsAway),
     ("NormalModeIsClickThrough", NormalModeIsClickThrough),
     ("PresenceDtoDoesNotExposeRawMetadata", PresenceDtoDoesNotExposeRawMetadata),
+    ("PresenceDtoRejectsSenderMismatch", PresenceDtoRejectsSenderMismatch),
+    ("PresenceTtlExpiresSnapshot", PresenceTtlExpiresSnapshot),
 };
 
 foreach (var (name, test) in tests)
@@ -60,6 +63,23 @@ static void PresenceDtoDoesNotExposeRawMetadata()
     AssertDoesNotContain("Url", dto);
 }
 
+
+static void PresenceDtoRejectsSenderMismatch()
+{
+    var update = new PresenceUpdateDto("friend-a", PresenceStatus.Coding, "코딩 중...", "typing", 0.8, DateTimeOffset.UtcNow);
+    AssertThrows<InvalidOperationException>(() => PresenceUpdateValidator.ValidateCallerCanSend("local-user", update));
+}
+
+static void PresenceTtlExpiresSnapshot()
+{
+    var store = new PresenceStore(TimeSpan.FromSeconds(1));
+    var now = DateTimeOffset.UtcNow;
+    var update = new PresenceUpdateDto("local-user", PresenceStatus.Coding, "코딩 중...", "typing", 0.8, now);
+    store.Upsert(update, now);
+    AssertTrue(store.TryGetFresh("local-user", now.AddMilliseconds(500), out _), "snapshot should be fresh before ttl");
+    AssertTrue(store.Expire(now.AddSeconds(2)).Count == 1, "snapshot should expire after ttl");
+}
+
 static ForegroundAppSnapshot Snapshot(string processName, string title) =>
     new(1234, processName, title, DateTimeOffset.UtcNow);
 
@@ -96,4 +116,26 @@ static void AssertDoesNotContain(string forbidden, string actual)
     {
         throw new InvalidOperationException($"Forbidden text found: {forbidden}");
     }
+}
+
+static void AssertTrue(bool condition, string message)
+{
+    if (!condition)
+    {
+        throw new InvalidOperationException(message);
+    }
+}
+
+static void AssertThrows<TException>(Action action) where TException : Exception
+{
+    try
+    {
+        action();
+    }
+    catch (TException)
+    {
+        return;
+    }
+
+    throw new InvalidOperationException($"Expected exception {typeof(TException).Name}");
 }

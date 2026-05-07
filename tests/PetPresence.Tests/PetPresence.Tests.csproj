@@ -7,5 +7,6 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\PetPresence.Contracts\PetPresence.Contracts.csproj" />
     <ProjectReference Include="..\..\src\PetPresence.Desktop\PetPresence.Desktop.csproj" />
+    <ProjectReference Include="..\..\src\PetPresence.Server\PetPresence.Server.csproj" />
   </ItemGroup>
 </Project>
