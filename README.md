@@ -81,3 +81,7 @@ python scripts/verify_stage.py v2
 python scripts/verify_stage.py v3
 python scripts/verify_stage.py v4
 ```
+
+## Windows smoke test
+
+CI proves restore/build/test/verifier behavior on `windows-latest`, but WPF overlay runtime behavior must still be checked in a real Windows desktop session. Use the manual guide and checklist in [docs/SMOKE_TEST.md](docs/SMOKE_TEST.md) before treating a release candidate as runtime-smoke-tested.
