@@ -3,6 +3,7 @@ using PetPresence.Desktop.Activity;
 using PetPresence.Server.Presence;
 using PetPresence.Server.Friends;
 using PetPresence.Desktop.Overlay;
+using PetPresence.Desktop.Privacy;
 
 var tests = new (string Name, Action Test)[]
 {
@@ -16,6 +17,10 @@ var tests = new (string Name, Action Test)[]
     ("PresenceTtlExpiresSnapshot", PresenceTtlExpiresSnapshot),
     ("OnlyAcceptedFriendsReceivePresence", OnlyAcceptedFriendsReceivePresence),
     ("FriendLayoutRoundTrips", FriendLayoutRoundTrips),
+    ("PrivacyPauseSuppressesSharing", PrivacyPauseSuppressesSharing),
+    ("ExcludedAppSuppressesSharing", ExcludedAppSuppressesSharing),
+    ("ApproximateModeCoarsensStatus", ApproximateModeCoarsensStatus),
+    ("IdleReaderContract", IdleReaderContract),
 };
 
 foreach (var (name, test) in tests)
@@ -119,6 +124,47 @@ static void FriendLayoutRoundTrips()
             File.Delete(path);
         }
     }
+}
+
+
+static void PrivacyPauseSuppressesSharing()
+{
+    var decision = new PrivacyFilter().Apply(
+        Snapshot("Code", "PetPresence"),
+        new ActivityState(ActivityKind.Coding, "코딩 중...", "typing", 0.8),
+        new PrivacySettings { SharingPaused = true },
+        DateTimeOffset.UtcNow);
+    AssertTrue(decision.ShouldSuppress, "pause should suppress sharing");
+}
+
+static void ExcludedAppSuppressesSharing()
+{
+    var settings = new PrivacySettings();
+    settings.ExcludedProcessNames.Add("winword");
+    var decision = new PrivacyFilter().Apply(
+        Snapshot("WINWORD.exe", "private draft"),
+        new ActivityState(ActivityKind.WritingDocument, "문서 작성 중...", "typing", 0.8),
+        settings,
+        DateTimeOffset.UtcNow);
+    AssertTrue(decision.ShouldSuppress, "excluded process should suppress sharing");
+}
+
+static void ApproximateModeCoarsensStatus()
+{
+    var decision = new PrivacyFilter().Apply(
+        Snapshot("Code", "PetPresence"),
+        new ActivityState(ActivityKind.Coding, "코딩 중...", "typing", 0.8),
+        new PrivacySettings { ApproximateStatusOnly = true },
+        DateTimeOffset.UtcNow);
+    AssertEqual(ActivityKind.Unknown, decision.State.Kind);
+    AssertEqual("활동 중...", decision.State.StatusText);
+}
+
+static void IdleReaderContract()
+{
+    var text = File.ReadAllText(Path.Combine(ProjectRoot(), "src", "PetPresence.Desktop", "Activity", "IdleTimeReader.cs"));
+    AssertContains("GetLastInputInfo", text);
+    AssertContains("LASTINPUTINFO", text);
 }
 
 static ForegroundAppSnapshot Snapshot(string processName, string title) =>
