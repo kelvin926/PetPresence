@@ -93,7 +93,7 @@ public sealed class RegressionTests
     }
 
     [Fact]
-    public void FriendLayoutRoundTrips()
+    public async Task FriendLayoutRoundTrips()
     {
         var path = Path.Combine(Path.GetTempPath(), $"petpresence-layout-{Guid.NewGuid():N}.json");
         try
@@ -104,8 +104,8 @@ public sealed class RegressionTests
                 new FriendPetViewModel { UserId = "friend-a", DisplayName = "Friend A", X = 12, Y = 34 },
                 new FriendPetViewModel { UserId = "friend-b", DisplayName = "Friend B", X = 56, Y = 78 },
             };
-            store.SaveAsync(pets).GetAwaiter().GetResult();
-            var loaded = store.LoadAsync().GetAwaiter().GetResult();
+            await store.SaveAsync(pets);
+            var loaded = await store.LoadAsync();
             Assert.Equal(12d, loaded["friend-a"].X);
             Assert.Equal(78d, loaded["friend-b"].Y);
         }
@@ -172,7 +172,7 @@ public sealed class RegressionTests
     }
 
     [Fact]
-    public void SettingsExportImportRoundTrips()
+    public async Task SettingsExportImportRoundTrips()
     {
         var path = Path.Combine(Path.GetTempPath(), $"petpresence-settings-{Guid.NewGuid():N}.json");
         try
@@ -185,8 +185,8 @@ public sealed class RegressionTests
                 PetPositions = [new PetPositionDto("friend-a", 1, 2)]
             };
             settings.Privacy.ExcludedProcessNames.Add("winword");
-            service.ExportAsync(settings, path).GetAwaiter().GetResult();
-            var loaded = service.ImportAsync(path).GetAwaiter().GetResult();
+            await service.ExportAsync(settings, path);
+            var loaded = await service.ImportAsync(path);
             Assert.Equal("local-user", loaded.UserId);
             Assert.Contains("winword", loaded.Privacy.ExcludedProcessNames);
             Assert.Equal(2d, loaded.PetPositions[0].Y);
