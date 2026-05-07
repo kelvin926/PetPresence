@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <Package Name="PetPresence" Manufacturer="PetPresence" Version="1.0.0" UpgradeCode="A5E8370E-98A7-4D4A-B284-458EE882811E">
+    <MajorUpgrade DowngradeErrorMessage="A newer version of PetPresence is already installed." />
+    <MediaTemplate EmbedCab="yes" />
+    <Feature Id="Main" Title="PetPresence" Level="1">
+      <ComponentGroupRef Id="PublishedFiles" />
+    </Feature>
+  </Package>
+</Wix>

@@ -4,6 +4,9 @@ using PetPresence.Server.Presence;
 using PetPresence.Server.Friends;
 using PetPresence.Desktop.Overlay;
 using PetPresence.Desktop.Privacy;
+using PetPresence.Desktop.Diagnostics;
+using PetPresence.Desktop.Distribution;
+using PetPresence.Desktop.Settings;
 
 var tests = new (string Name, Action Test)[]
 {
@@ -21,6 +24,9 @@ var tests = new (string Name, Action Test)[]
     ("ExcludedAppSuppressesSharing", ExcludedAppSuppressesSharing),
     ("ApproximateModeCoarsensStatus", ApproximateModeCoarsensStatus),
     ("IdleReaderContract", IdleReaderContract),
+    ("CrashLogsAreSanitized", CrashLogsAreSanitized),
+    ("SettingsExportImportRoundTrips", SettingsExportImportRoundTrips),
+    ("UpdateManifestRejectsDowngrade", UpdateManifestRejectsDowngrade),
 };
 
 foreach (var (name, test) in tests)
@@ -165,6 +171,51 @@ static void IdleReaderContract()
     var text = File.ReadAllText(Path.Combine(ProjectRoot(), "src", "PetPresence.Desktop", "Activity", "IdleTimeReader.cs"));
     AssertContains("GetLastInputInfo", text);
     AssertContains("LASTINPUTINFO", text);
+}
+
+
+static void CrashLogsAreSanitized()
+{
+    var sanitized = CrashLogService.Sanitize("ProcessName: WINWORD\nWindow Title: private draft\nhttps://example.test/private");
+    AssertDoesNotContain("WINWORD", sanitized);
+    AssertDoesNotContain("private draft", sanitized);
+    AssertDoesNotContain("https://", sanitized);
+}
+
+static void SettingsExportImportRoundTrips()
+{
+    var path = Path.Combine(Path.GetTempPath(), $"petpresence-settings-{Guid.NewGuid():N}.json");
+    try
+    {
+        var service = new SettingsImportExportService();
+        var settings = new PetPresenceSettings
+        {
+            UserId = "local-user",
+            AutoStartEnabled = true,
+            PetPositions = [new PetPositionDto("friend-a", 1, 2)]
+        };
+        settings.Privacy.ExcludedProcessNames.Add("winword");
+        service.ExportAsync(settings, path).GetAwaiter().GetResult();
+        var loaded = service.ImportAsync(path).GetAwaiter().GetResult();
+        AssertEqual("local-user", loaded.UserId);
+        AssertTrue(loaded.Privacy.ExcludedProcessNames.Contains("winword"), "excluded process should round-trip");
+        AssertEqual(2d, loaded.PetPositions[0].Y);
+    }
+    finally
+    {
+        if (File.Exists(path))
+        {
+            File.Delete(path);
+        }
+    }
+}
+
+static void UpdateManifestRejectsDowngrade()
+{
+    var service = new UpdateService(new HttpClient());
+    var manifest = new UpdateManifest("1.0.0", new Uri("https://example.test/PetPresence.exe"), new string('a', 64), DateTimeOffset.UtcNow);
+    var result = service.EvaluateManifest(manifest, new Version(1, 0, 1));
+    AssertTrue(!result.UpdateAvailable, "downgrade must be rejected");
 }
 
 static ForegroundAppSnapshot Snapshot(string processName, string title) =>

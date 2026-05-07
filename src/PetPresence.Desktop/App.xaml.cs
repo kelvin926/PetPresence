@@ -1,5 +1,6 @@
 using System.Windows;
 using PetPresence.Desktop.Overlay;
+using PetPresence.Desktop.Diagnostics;
 
 namespace PetPresence.Desktop;
 
@@ -11,6 +12,8 @@ public partial class App : Application
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+
+        new CrashLogService().RegisterGlobalHandlers();
 
         var viewModel = new OverlayViewModel();
         viewModel.Friends.Add(new FriendPetViewModel
