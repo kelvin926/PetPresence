@@ -7,7 +7,7 @@ using PetPresence.Desktop.Privacy;
 
 namespace PetPresence.Desktop;
 
-public partial class App : Application
+public partial class App : System.Windows.Application
 {
     private OverlayWindow? _overlayWindow;
     private TrayIconHost? _trayIconHost;
@@ -15,7 +15,7 @@ public partial class App : Application
     private IPresenceClient? _presenceClient;
     private PresenceOverlayController? _presenceOverlayController;
 
-    protected override void OnStartup(StartupEventArgs e)
+    protected override void OnStartup(System.Windows.StartupEventArgs e)
     {
         base.OnStartup(e);
 
@@ -47,7 +47,7 @@ public partial class App : Application
         _localPresenceController.Start();
     }
 
-    protected override async void OnExit(ExitEventArgs e)
+    protected override async void OnExit(System.Windows.ExitEventArgs e)
     {
         if (_localPresenceController is not null)
         {

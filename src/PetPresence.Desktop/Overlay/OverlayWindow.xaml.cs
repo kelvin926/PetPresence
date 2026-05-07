@@ -1,15 +1,20 @@
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Input;
+using WpfInputElement = System.Windows.IInputElement;
+using WpfPoint = System.Windows.Point;
+using WpfMouse = System.Windows.Input.Mouse;
+using WpfMouseButtonEventArgs = System.Windows.Input.MouseButtonEventArgs;
+using WpfMouseButtonState = System.Windows.Input.MouseButtonState;
+using WpfMouseEventArgs = System.Windows.Input.MouseEventArgs;
 
 namespace PetPresence.Desktop.Overlay;
 
 public partial class OverlayWindow : Window
 {
     private FriendPetViewModel? _draggedPet;
-    private Point _dragStartMouse;
-    private Point _dragStartPet;
+    private WpfPoint _dragStartMouse;
+    private WpfPoint _dragStartPet;
 
     public OverlayWindow()
     {
@@ -18,7 +23,6 @@ public partial class OverlayWindow : Window
         DataContextChanged += (_, _) => SubscribeToViewModel();
     }
 
-    protected override bool ShowWithoutActivation => true;
 
     private OverlayViewModel? ViewModel => DataContext as OverlayViewModel;
 
@@ -41,7 +45,7 @@ public partial class OverlayWindow : Window
         }
     }
 
-    private void Pet_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    private void Pet_MouseLeftButtonDown(object sender, WpfMouseButtonEventArgs e)
     {
         if (ViewModel?.LayoutEditMode != true || sender is not FrameworkElement { DataContext: FriendPetViewModel pet })
         {
@@ -50,14 +54,14 @@ public partial class OverlayWindow : Window
 
         _draggedPet = pet;
         _dragStartMouse = e.GetPosition(this);
-        _dragStartPet = new Point(pet.X, pet.Y);
-        Mouse.Capture((IInputElement)sender);
+        _dragStartPet = new WpfPoint(pet.X, pet.Y);
+        WpfMouse.Capture((WpfInputElement)sender);
         e.Handled = true;
     }
 
-    private void Pet_MouseMove(object sender, MouseEventArgs e)
+    private void Pet_MouseMove(object sender, WpfMouseEventArgs e)
     {
-        if (_draggedPet is null || e.LeftButton != MouseButtonState.Pressed)
+        if (_draggedPet is null || e.LeftButton != WpfMouseButtonState.Pressed)
         {
             return;
         }
@@ -68,7 +72,7 @@ public partial class OverlayWindow : Window
         e.Handled = true;
     }
 
-    private void Pet_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    private void Pet_MouseLeftButtonUp(object sender, WpfMouseButtonEventArgs e)
     {
         if (_draggedPet is null)
         {
@@ -76,7 +80,7 @@ public partial class OverlayWindow : Window
         }
 
         _draggedPet = null;
-        Mouse.Capture(null);
+        WpfMouse.Capture(null);
         e.Handled = true;
     }
 }

@@ -33,7 +33,7 @@ public sealed class PresenceStore
         return true;
     }
 
-    public PresenceUpdateDto? RemoveAsOffline(string userId, DateTimeOffset now)
+    public PresenceUpdateDto RemoveAsOffline(string userId, DateTimeOffset now)
     {
         _snapshots.TryRemove(userId, out _);
         return new PresenceUpdateDto(userId, PresenceStatus.Offline, "오프라인...", "offline", 1, now);
