@@ -78,6 +78,9 @@ def verify_v0() -> None:
 
     tray = require_file("src/PetPresence.Desktop/Overlay/TrayIconHost.cs")
     require("NotifyIcon" in tray and "Edit pet positions" in tray, "v0 tray edit mode missing")
+    local_controller = require_file("src/PetPresence.Desktop/Presence/LocalPresenceController.cs")
+    for token in ["PeriodicTimer", "ActivityStabilizer", "StatusText", "AnimationKey", "_heartbeatInterval", "_minimumBubbleDisplay"]:
+        require(token in local_controller, f"v0 local presence controller missing {token}")
 
     tests = require_file("tests/PetPresence.Tests/Program.cs")
     for token in ["ClassifiesWordAsWriting", "ClassifiesYouTubeAsWatching", "NormalModeIsClickThrough", "PresenceDtoDoesNotExposeRawMetadata"]:
@@ -99,9 +102,15 @@ def verify_v1() -> None:
     require("expiresAt" in store and "TimeSpan" in store, "v1 presence TTL store missing")
     client = require_file("src/PetPresence.Desktop/Presence/PresenceClient.cs")
     require("HubConnectionBuilder" in client and "UpdatePresence" in client, "v1 desktop SignalR client missing")
+    overlay_controller = require_file("src/PetPresence.Desktop/Presence/PresenceOverlayController.cs")
+    require("FriendPresenceChanged" in overlay_controller and "GetOrAddFriend" in overlay_controller, "v1 friend presence overlay wiring missing")
     tests = require_file("tests/PetPresence.Tests/Program.cs")
-    for token in ["PresenceDtoRejectsSenderMismatch", "PresenceTtlExpiresSnapshot"]:
+    for token in ["PresenceDtoRejectsSenderMismatch", "PresenceTtlExpiresSnapshot", "LocalPresenceLoopUpdatesOwnPet", "FriendPresenceAddsPet", "PresenceValidatorCanonicalizesStatusText", "AppConfiguresPresenceClientFromEnvironment"]:
         require(token in tests, f"v1 test missing {token}")
+    validator = require_file("src/PetPresence.Server/Presence/PresenceUpdateValidator.cs")
+    require("CanonicalPresence" in validator and "StatusText = canonical.Text" in validator, "v1 server must canonicalize status text")
+    app = require_file("src/PetPresence.Desktop/App.xaml.cs")
+    require("PETPRESENCE_SERVER_URL" in app and "PresenceOverlayController" in app, "v1 app must optionally wire presence client to overlay")
     verify_privacy_contracts()
     scan_source_for_banned_apis()
 

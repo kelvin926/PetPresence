@@ -77,7 +77,9 @@ public sealed class WindowsAudioSessionReader : IAudioSessionReader
 
     [ComImport]
     [Guid("BCDE0395-E52F-467C-8E3D-C4579291692E")]
-    private sealed class MMDeviceEnumerator;
+    private sealed class MMDeviceEnumerator
+    {
+    }
 
     private enum EDataFlow
     {

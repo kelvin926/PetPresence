@@ -27,6 +27,10 @@ var tests = new (string Name, Action Test)[]
     ("CrashLogsAreSanitized", CrashLogsAreSanitized),
     ("SettingsExportImportRoundTrips", SettingsExportImportRoundTrips),
     ("UpdateManifestRejectsDowngrade", UpdateManifestRejectsDowngrade),
+    ("LocalPresenceLoopUpdatesOwnPet", LocalPresenceLoopUpdatesOwnPet),
+    ("FriendPresenceAddsPet", FriendPresenceAddsPet),
+    ("PresenceValidatorCanonicalizesStatusText", PresenceValidatorCanonicalizesStatusText),
+    ("AppConfiguresPresenceClientFromEnvironment", AppConfiguresPresenceClientFromEnvironment),
 };
 
 foreach (var (name, test) in tests)
@@ -216,6 +220,44 @@ static void UpdateManifestRejectsDowngrade()
     var manifest = new UpdateManifest("1.0.0", new Uri("https://example.test/PetPresence.exe"), new string('a', 64), DateTimeOffset.UtcNow);
     var result = service.EvaluateManifest(manifest, new Version(1, 0, 1));
     AssertTrue(!result.UpdateAvailable, "downgrade must be rejected");
+}
+
+
+static void LocalPresenceLoopUpdatesOwnPet()
+{
+    var text = File.ReadAllText(Path.Combine(ProjectRoot(), "src", "PetPresence.Desktop", "Presence", "LocalPresenceController.cs"));
+    AssertContains("PeriodicTimer", text);
+    AssertContains("ActivityStabilizer", text);
+    AssertContains("StatusText", text);
+    AssertContains("AnimationKey", text);
+    AssertContains("_heartbeatInterval", text);
+}
+
+static void FriendPresenceAddsPet()
+{
+    var viewModel = new OverlayViewModel();
+    var controllerText = File.ReadAllText(Path.Combine(ProjectRoot(), "src", "PetPresence.Desktop", "Presence", "PresenceOverlayController.cs"));
+    var pet = viewModel.GetOrAddFriend("friend-a", "Friend A");
+    AssertEqual("friend-a", pet.UserId);
+    AssertContains("ApplyFriendPresence", controllerText);
+    AssertContains("GetOrAddFriend", controllerText);
+}
+
+
+static void PresenceValidatorCanonicalizesStatusText()
+{
+    var update = new PresenceUpdateDto("local-user", PresenceStatus.Coding, "private project title", "unknown", 0.8, DateTimeOffset.UtcNow);
+    var safe = PresenceUpdateValidator.ValidateCallerCanSend("local-user", update);
+    AssertEqual("코딩 중...", safe.StatusText);
+    AssertEqual("typing", safe.AnimationKey);
+}
+
+static void AppConfiguresPresenceClientFromEnvironment()
+{
+    var text = File.ReadAllText(Path.Combine(ProjectRoot(), "src", "PetPresence.Desktop", "App.xaml.cs"));
+    AssertContains("PETPRESENCE_SERVER_URL", text);
+    AssertContains("PresenceOverlayController", text);
+    AssertContains("presenceClient: _presenceClient", text);
 }
 
 static ForegroundAppSnapshot Snapshot(string processName, string title) =>

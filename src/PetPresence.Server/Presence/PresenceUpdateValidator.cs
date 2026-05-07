@@ -4,9 +4,16 @@ namespace PetPresence.Server.Presence;
 
 public static class PresenceUpdateValidator
 {
-    private static readonly HashSet<string> AllowedAnimationKeys = new(StringComparer.OrdinalIgnoreCase)
+    private static readonly Dictionary<PresenceStatus, (string Text, string Animation)> CanonicalPresence = new()
     {
-        "idle", "typing", "watching", "browsing", "listening", "away", "offline", "gaming"
+        [PresenceStatus.Offline] = ("오프라인...", "offline"),
+        [PresenceStatus.Away] = ("자리 비움...", "away"),
+        [PresenceStatus.WebBrowsing] = ("웹 보는 중...", "browsing"),
+        [PresenceStatus.WatchingVideo] = ("영상 보는 중...", "watching"),
+        [PresenceStatus.WritingDocument] = ("문서 작성 중...", "typing"),
+        [PresenceStatus.ListeningMusic] = ("음악 듣는 중...", "listening"),
+        [PresenceStatus.Coding] = ("코딩 중...", "typing"),
+        [PresenceStatus.Unknown] = ("상태 확인 중...", "idle")
     };
 
     public static PresenceUpdateDto ValidateCallerCanSend(string callerUserId, PresenceUpdateDto update)
@@ -16,20 +23,17 @@ public static class PresenceUpdateValidator
             throw new InvalidOperationException("Presence sender mismatch.");
         }
 
-        if (update.StatusText.Length > 64)
+        if (!CanonicalPresence.TryGetValue(update.Status, out var canonical))
         {
-            throw new InvalidOperationException("Presence status text is too long.");
-        }
-
-        if (!AllowedAnimationKeys.Contains(update.AnimationKey))
-        {
-            throw new InvalidOperationException("Unknown animation key.");
+            throw new InvalidOperationException("Unknown presence status.");
         }
 
         var confidence = Math.Clamp(update.Confidence, 0, 1);
         return update with
         {
             UserId = callerUserId,
+            StatusText = canonical.Text,
+            AnimationKey = canonical.Animation,
             Confidence = confidence,
             UpdatedAt = update.UpdatedAt == default ? DateTimeOffset.UtcNow : update.UpdatedAt
         };

@@ -14,7 +14,7 @@ builder.Services.AddHostedService<PresenceCleanupService>();
 
 var app = builder.Build();
 
-app.MapGet("/health", () => Results.Ok(new { service = "PetPresence.Server", version = "v2" }));
+app.MapGet("/health", () => Results.Ok(new { service = "PetPresence.Server", version = "v4" }));
 
 app.MapPost("/friends/request", (FriendRequestDto request, HttpContext http, DevelopmentUserContext users, FriendshipStore friends) =>
 {

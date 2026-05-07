@@ -57,7 +57,8 @@ public sealed class PresenceHub : Hub
     {
         foreach (var friendUserId in _friendshipStore.GetAcceptedFriendIds(senderUserId))
         {
-            await Clients.Group(UserGroup(friendUserId)).SendAsync("FriendPresenceChanged", update, reason);
+            _ = reason;
+            await Clients.Group(UserGroup(friendUserId)).SendAsync("FriendPresenceChanged", update);
         }
     }
 

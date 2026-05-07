@@ -34,7 +34,7 @@ public sealed class PresenceCleanupService : BackgroundService
                 _logger.LogInformation("Presence TTL expired for user {UserId}", update.UserId);
                 foreach (var friendUserId in _friendshipStore.GetAcceptedFriendIds(update.UserId))
                 {
-                    await _hubContext.Clients.Group($"user:{friendUserId}").SendAsync("FriendPresenceChanged", update, "PresenceExpired", stoppingToken);
+                    await _hubContext.Clients.Group($"user:{friendUserId}").SendAsync("FriendPresenceChanged", update, stoppingToken);
                 }
             }
         }
