@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - dev
+  pull_request:
+    branches:
+      - main
+      - dev
+
+jobs:
+  windows-build-test-verify:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build -c Debug --no-restore
+
+      - name: Test
+        run: dotnet test -c Debug --no-build
+
+      - name: Stage verifier v0
+        run: python scripts/verify_stage.py v0
+
+      - name: Stage verifier v1
+        run: python scripts/verify_stage.py v1
+
+      - name: Stage verifier v2
+        run: python scripts/verify_stage.py v2
+
+      - name: Stage verifier v3
+        run: python scripts/verify_stage.py v3
+
+      - name: Stage verifier v4
+        run: python scripts/verify_stage.py v4
