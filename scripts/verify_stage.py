@@ -90,8 +90,9 @@ def verify_v0() -> None:
 def verify_v1() -> None:
     verify_v0()
     hub = require_file("src/PetPresence.Server/Hubs/PresenceHub.cs")
-    for token in ["UpdatePresence", "FriendPresenceChanged", "Clients.Others", "ConnectionClosed", "user:"]:
+    for token in ["UpdatePresence", "FriendPresenceChanged", "ConnectionClosed", "user:"]:
         require(token in hub, f"v1 PresenceHub missing {token}")
+    require("Clients.Others" in hub or "GetAcceptedFriendIds" in hub, "v1/v2 PresenceHub must notify other clients or accepted friends")
     auth = require_file("src/PetPresence.Server/Auth/DevelopmentUserContext.cs")
     require("X-User-Id" in auth, "v1 development auth must use X-User-Id")
     store = require_file("src/PetPresence.Server/Presence/PresenceStore.cs")

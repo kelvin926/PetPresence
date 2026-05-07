@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.SignalR;
 using PetPresence.Contracts;
 using PetPresence.Server.Auth;
+using PetPresence.Server.Friends;
 using PetPresence.Server.Presence;
 
 namespace PetPresence.Server.Hubs;
@@ -10,11 +11,13 @@ public sealed class PresenceHub : Hub
     private const string ConnectionClosed = nameof(ConnectionClosed);
     private readonly DevelopmentUserContext _userContext;
     private readonly PresenceStore _presenceStore;
+    private readonly FriendshipStore _friendshipStore;
 
-    public PresenceHub(DevelopmentUserContext userContext, PresenceStore presenceStore)
+    public PresenceHub(DevelopmentUserContext userContext, PresenceStore presenceStore, FriendshipStore friendshipStore)
     {
         _userContext = userContext;
         _presenceStore = presenceStore;
+        _friendshipStore = friendshipStore;
     }
 
     public override async Task OnConnectedAsync()
@@ -38,10 +41,7 @@ public sealed class PresenceHub : Hub
         }
 
         _presenceStore.Upsert(safeUpdate, DateTimeOffset.UtcNow);
-
-        // v1 MVP intentionally broadcasts to all connected clients except the sender.
-        // v2 replaces this with accepted-friend-only groups.
-        await Clients.Others.SendAsync("FriendPresenceChanged", safeUpdate);
+        await SendToAcceptedFriends(callerUserId, safeUpdate, reason: "PresenceUpdated");
     }
 
     public override async Task OnDisconnectedAsync(Exception? exception)
@@ -49,8 +49,16 @@ public sealed class PresenceHub : Hub
         var userId = _userContext.GetRequiredUserId(Context);
         var offline = _presenceStore.RemoveAsOffline(userId, DateTimeOffset.UtcNow);
         await Groups.RemoveFromGroupAsync(Context.ConnectionId, UserGroup(userId));
-        await Clients.Others.SendAsync("FriendPresenceChanged", offline, ConnectionClosed);
+        await SendToAcceptedFriends(userId, offline, ConnectionClosed);
         await base.OnDisconnectedAsync(exception);
+    }
+
+    private async Task SendToAcceptedFriends(string senderUserId, PresenceUpdateDto update, string reason)
+    {
+        foreach (var friendUserId in _friendshipStore.GetAcceptedFriendIds(senderUserId))
+        {
+            await Clients.Group(UserGroup(friendUserId)).SendAsync("FriendPresenceChanged", update, reason);
+        }
     }
 
     private static string UserGroup(string userId) => $"user:{userId}";

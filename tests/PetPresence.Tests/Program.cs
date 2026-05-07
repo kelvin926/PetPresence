@@ -1,6 +1,8 @@
 using PetPresence.Contracts;
 using PetPresence.Desktop.Activity;
 using PetPresence.Server.Presence;
+using PetPresence.Server.Friends;
+using PetPresence.Desktop.Overlay;
 
 var tests = new (string Name, Action Test)[]
 {
@@ -12,6 +14,8 @@ var tests = new (string Name, Action Test)[]
     ("PresenceDtoDoesNotExposeRawMetadata", PresenceDtoDoesNotExposeRawMetadata),
     ("PresenceDtoRejectsSenderMismatch", PresenceDtoRejectsSenderMismatch),
     ("PresenceTtlExpiresSnapshot", PresenceTtlExpiresSnapshot),
+    ("OnlyAcceptedFriendsReceivePresence", OnlyAcceptedFriendsReceivePresence),
+    ("FriendLayoutRoundTrips", FriendLayoutRoundTrips),
 };
 
 foreach (var (name, test) in tests)
@@ -78,6 +82,43 @@ static void PresenceTtlExpiresSnapshot()
     store.Upsert(update, now);
     AssertTrue(store.TryGetFresh("local-user", now.AddMilliseconds(500), out _), "snapshot should be fresh before ttl");
     AssertTrue(store.Expire(now.AddSeconds(2)).Count == 1, "snapshot should expire after ttl");
+}
+
+
+static void OnlyAcceptedFriendsReceivePresence()
+{
+    var store = new FriendshipStore();
+    store.RequestFriend("local-user", "friend-a");
+    AssertTrue(store.GetAcceptedFriendIds("local-user").Count == 0, "pending friend must not receive presence");
+    store.AcceptFriend("friend-a", "local-user");
+    AssertTrue(store.GetAcceptedFriendIds("local-user").SequenceEqual(new[] { "friend-a" }), "accepted friend should receive presence");
+    store.BlockFriend("local-user", "friend-a");
+    AssertTrue(store.GetAcceptedFriendIds("local-user").Count == 0, "blocked friend must not receive presence");
+}
+
+static void FriendLayoutRoundTrips()
+{
+    var path = Path.Combine(Path.GetTempPath(), $"petpresence-layout-{Guid.NewGuid():N}.json");
+    try
+    {
+        var store = new FriendPetLayoutStore(path);
+        var pets = new[]
+        {
+            new FriendPetViewModel { UserId = "friend-a", DisplayName = "Friend A", X = 12, Y = 34 },
+            new FriendPetViewModel { UserId = "friend-b", DisplayName = "Friend B", X = 56, Y = 78 },
+        };
+        store.SaveAsync(pets).GetAwaiter().GetResult();
+        var loaded = store.LoadAsync().GetAwaiter().GetResult();
+        AssertEqual(12d, loaded["friend-a"].X);
+        AssertEqual(78d, loaded["friend-b"].Y);
+    }
+    finally
+    {
+        if (File.Exists(path))
+        {
+            File.Delete(path);
+        }
+    }
 }
 
 static ForegroundAppSnapshot Snapshot(string processName, string title) =>

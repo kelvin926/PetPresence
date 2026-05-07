@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.SignalR;
+using PetPresence.Server.Friends;
 using PetPresence.Server.Hubs;
 
 namespace PetPresence.Server.Presence;
@@ -6,12 +7,18 @@ namespace PetPresence.Server.Presence;
 public sealed class PresenceCleanupService : BackgroundService
 {
     private readonly PresenceStore _presenceStore;
+    private readonly FriendshipStore _friendshipStore;
     private readonly IHubContext<PresenceHub> _hubContext;
     private readonly ILogger<PresenceCleanupService> _logger;
 
-    public PresenceCleanupService(PresenceStore presenceStore, IHubContext<PresenceHub> hubContext, ILogger<PresenceCleanupService> logger)
+    public PresenceCleanupService(
+        PresenceStore presenceStore,
+        FriendshipStore friendshipStore,
+        IHubContext<PresenceHub> hubContext,
+        ILogger<PresenceCleanupService> logger)
     {
         _presenceStore = presenceStore;
+        _friendshipStore = friendshipStore;
         _hubContext = hubContext;
         _logger = logger;
     }
@@ -25,7 +32,10 @@ public sealed class PresenceCleanupService : BackgroundService
             foreach (var update in expired)
             {
                 _logger.LogInformation("Presence TTL expired for user {UserId}", update.UserId);
-                await _hubContext.Clients.Others.SendAsync("FriendPresenceChanged", update, stoppingToken);
+                foreach (var friendUserId in _friendshipStore.GetAcceptedFriendIds(update.UserId))
+                {
+                    await _hubContext.Clients.Group($"user:{friendUserId}").SendAsync("FriendPresenceChanged", update, "PresenceExpired", stoppingToken);
+                }
             }
         }
     }
